@@ -49,9 +49,40 @@
   <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
     <h1 class="text-2xl font-bold mb-4 text-center">Quiz App</h1>
     <div class="mb-4">
-      <label for="topic" class="block text-sm font-medium text-gray-700">Enter Topic</label>
-      <input type="text" id="topic" class="mt-1 p-2 w-full border rounded-md" placeholder="e.g., History, Science, Movies, Music">
-      <p class="text-xs text-gray-500 mt-1">Supported topics: General, Books, Movies, Music, Theatre, TV, Video Games, Board Games, Science, Computers, Math, Mythology, Sports, Geography, History, Politics, Art, Celebrities, Animals, Vehicles, Comics, Gadgets, Anime, Cartoons</p>
+      <label for="topic" class="block text-sm font-medium text-gray-700">Select Topic</label>
+      <select id="topic" class="mt-1 p-2 w-full border rounded-md">
+        <option value="" disabled selected>Select a topic</option>
+        <option value="general">General Knowledge</option>
+        <option value="books">Books</option>
+        <option value="movies">Movies</option>
+        <option value="music">Music</option>
+        <option value="musicals">Musicals & Theatre</option>
+        <option value="television">Television</option>
+        <option value="video games">Video Games</option>
+        <option value="board games">Board Games</option>
+        <option value="science">Science & Nature</option>
+        <option value="computers">Computers</option>
+        <option value="mathematics">Mathematics</option>
+        <option value="mythology">Mythology</option>
+        <option value="sports">Sports</option>
+        <option value="geography">Geography</option>
+        <option value="history">History</option>
+        <option value="politics">Politics</option>
+        <option value="art">Art</option>
+        <option value="celebrities">Celebrities</option>
+        <option value="animals">Animals</option>
+        <option value="vehicles">Vehicles</option>
+        <option value="comics">Comics</option>
+        <option value="gadgets">Gadgets</option>
+        <option value="anime">Japanese Anime & Manga</option>
+        <option value="cartoons">Cartoons & Animations</option>
+      </select>
+      <label for="difficulty" class="block text-sm font-medium text-gray-700 mt-2">Select Difficulty</label>
+      <select id="difficulty" class="mt-1 p-2 w-full border rounded-md">
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
       <button onclick="generateQuiz()" class="mt-2 w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">Generate Quiz</button>
     </div>
     <div id="quizContainer" class="space-y-4"></div>
@@ -59,137 +90,193 @@
   </div>
 
   <script>
-    // Comprehensive topic to OpenTDB category ID mapping
+    // Topic to OpenTDB category ID mapping
     const topicMap = {
       general: 9,
-      "general knowledge": 9,
-      trivia: 9,
       books: 10,
-      literature: 10,
       movies: 11,
-      film: 11,
-      cinema: 11,
       music: 12,
-      songs: 12,
       musicals: 13,
-      theatre: 13,
-      theater: 13,
       television: 14,
-      tv: 14,
-      shows: 14,
       "video games": 15,
-      gaming: 15,
-      games: 15,
       "board games": 16,
-      "tabletop games": 16,
       science: 17,
-      nature: 17,
-      "science and nature": 17,
       computers: 18,
-      computing: 18,
-      tech: 18,
-      technology: 18,
       mathematics: 19,
-      math: 19,
-      maths: 19,
       mythology: 20,
-      myths: 20,
       sports: 21,
-      athletics: 21,
       geography: 22,
-      places: 22,
       history: 23,
-      historical: 23,
       politics: 24,
-      government: 24,
       art: 25,
-      painting: 25,
-      sculpture: 25,
       celebrities: 26,
-      celebs: 26,
-      "famous people": 26,
       animals: 27,
-      wildlife: 27,
       vehicles: 28,
-      cars: 28,
-      transport: 28,
       comics: 29,
-      "comic books": 29,
       gadgets: 30,
-      devices: 30,
-      "tech gadgets": 30,
       anime: 31,
-      manga: 31,
-      "japanese anime": 31,
-      cartoons: 32,
-      animation: 32
+      cartoons: 32
     };
 
-    // Function to decode HTML entities (e.g., &quot; to ")
+    // Session token for OpenTDB
+    let sessionToken = null;
+
+    // Fetch session token on page load
+    async function fetchSessionToken() {
+      try {
+        const response = await fetch('https://opentdb.com/api_token.php?command=request');
+        const data = await response.json();
+        if (data.response_code === 0) {
+          sessionToken = data.token;
+          localStorage.setItem('quizSessionToken', sessionToken);
+        } else {
+          throw new Error('Failed to fetch session token');
+        }
+      } catch (error) {
+        console.error('Error fetching session token:', error);
+      }
+    }
+
+    // Reset session token if needed
+    async function resetSessionToken() {
+      try {
+        const response = await fetch(`https://opentdb.com/api_token.php?command=reset&token=${sessionToken}`);
+        const data = await response.json();
+        if (data.response_code === 0) {
+          sessionToken = data.token;
+          localStorage.setItem('quizSessionToken', sessionToken);
+          localStorage.removeItem('quizCache'); // Clear cache on token reset
+        }
+      } catch (error) {
+        console.error('Error resetting session token:', error);
+      }
+    }
+
+    // Initialize session token
+    (async () => {
+      const cachedToken = localStorage.getItem('quizSessionToken');
+      if (cachedToken) {
+        sessionToken = cachedToken;
+      } else {
+        await fetchSessionToken();
+      }
+    })();
+
+    // Function to decode HTML entities
     function decodeHtml(html) {
       const txt = document.createElement('textarea');
       txt.innerHTML = html;
       return txt.value;
     }
 
+    // Check cache for questions
+    function getCachedQuestions(topic, difficulty) {
+      const cacheKey = `quiz_${topic}_${difficulty}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { questions, timestamp } = JSON.parse(cached);
+        // Check if cache is less than 24 hours old
+        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+          return questions;
+        }
+      }
+      return null;
+    }
+
+    // Store questions in cache
+    function cacheQuestions(topic, difficulty, questions) {
+      const cacheKey = `quiz_${topic}_${difficulty}`;
+      localStorage.setItem(cacheKey, JSON.stringify({
+        questions,
+        timestamp: Date.now()
+      }));
+    }
+
     async function generateQuiz() {
-      const topic = document.getElementById('topic').value.trim().toLowerCase();
+      const topic = document.getElementById('topic').value;
+      const difficulty = document.getElementById('difficulty').value;
       const quizContainer = document.getElementById('quizContainer');
       const resultDiv = document.getElementById('result');
       quizContainer.innerHTML = '';
       resultDiv.innerHTML = '';
 
-      if (!topicMap[topic]) {
-        resultDiv.innerHTML = `
-          <p class="text-red-500">Please enter a valid topic. Supported topics include: General, Books, Movies, Music, Theatre, TV, Video Games, Board Games, Science, Computers, Math, Mythology, Sports, Geography, History, Politics, Art, Celebrities, Animals, Vehicles, Comics, Gadgets, Anime, Cartoons.</p>
-        `;
+      if (!topic || !topicMap[topic]) {
+        resultDiv.innerHTML = '<p class="text-red-500">Please select a valid topic.</p>';
         return;
       }
 
       quizContainer.innerHTML = '<p class="text-center">Loading questions...</p>';
 
+      // Check cache first
+      const cachedQuestions = getCachedQuestions(topic, difficulty);
+      if (cachedQuestions) {
+        displayQuestions(cachedQuestions);
+        return;
+      }
+
       try {
         // Fetch 5 multiple-choice questions from OpenTDB
-        const response = await fetch(`https://opentdb.com/api.php?amount=5&category=${topicMap[topic]}&type=multiple`);
+        const url = `https://opentdb.com/api.php?amount=5&category=${topicMap[topic]}&difficulty=${difficulty}&type=multiple${sessionToken ? `&token=${sessionToken}` : ''}`;
+        const response = await fetch(url);
         const data = await response.json();
 
-        if (data.response_code !== 0) {
-          resultDiv.innerHTML = '<p class="text-red-500">Error fetching questions. Please try again or choose another topic.</p>';
-          return;
+        if (data.response_code === 0) {
+          const questions = data.results.map((q) => ({
+            question: decodeHtml(q.question),
+            options: [...q.incorrect_answers.map(decodeHtml), decodeHtml(q.correct_answer)].sort(() => Math.random() - 0.5),
+            answer: decodeHtml(q.correct_answer),
+          }));
+          cacheQuestions(topic, difficulty, questions);
+          displayQuestions(questions);
+        } else if (data.response_code === 3 || data.response_code === 4) {
+          // Token empty or invalid, reset token and retry
+          await resetSessionToken();
+          const retryResponse = await fetch(url);
+          const retryData = await retryResponse.json();
+          if (retryData.response_code === 0) {
+            const questions = retryData.results.map((q) => ({
+              question: decodeHtml(q.question),
+              options: [...q.incorrect_answers.map(decodeHtml), decodeHtml(q.correct_answer)].sort(() => Math.random() - 0.5),
+              answer: decodeHtml(q.correct_answer),
+            }));
+            cacheQuestions(topic, difficulty, questions);
+            displayQuestions(questions);
+          } else {
+            resultDiv.innerHTML = '<p class="text-red-500">No questions available for this topic and difficulty. Try another combination.</p>';
+          }
+        } else {
+          resultDiv.innerHTML = '<p class="text-red-500">Error fetching questions. Please try again.</p>';
         }
-
-        const questions = data.results.map((q) => ({
-          question: decodeHtml(q.question),
-          options: [...q.incorrect_answers.map(decodeHtml), decodeHtml(q.correct_answer)].sort(() => Math.random() - 0.5),
-          answer: decodeHtml(q.correct_answer),
-        }));
-
-        quizContainer.innerHTML = '';
-        questions.forEach((q, index) => {
-          const questionDiv = document.createElement('div');
-          questionDiv.className = 'border p-4 rounded-md';
-          questionDiv.innerHTML = `
-            <p class="font-medium">${index + 1}. ${q.question}</p>
-            ${q.options.map((option, i) => `
-              <label class="block">
-                <input type="radio" name="question${index}" value="${option}" class="mr-2">
-                ${option}
-              </label>
-            `).join('')}
-            <div id="feedback${index}" class="mt-2 text-sm"></div>
-          `;
-          quizContainer.appendChild(questionDiv);
-        });
-
-        const submitButton = document.createElement('button');
-        submitButton.className = 'mt-4 w-full bg-green-500 text-white p-2 rounded-md hover:bg-green-600';
-        submitButton.textContent = 'Submit Answers';
-        submitButton.onclick = () => checkAnswers(questions);
-        quizContainer.appendChild(submitButton);
       } catch (error) {
         resultDiv.innerHTML = '<p class="text-red-500">Failed to load questions. Check your internet connection.</p>';
         console.error(error);
       }
+    }
+
+    function displayQuestions(questions) {
+      const quizContainer = document.getElementById('quizContainer');
+      quizContainer.innerHTML = '';
+      questions.forEach((q, index) => {
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'border p-4 rounded-md';
+        questionDiv.innerHTML = `
+          <p class="font-medium">${index + 1}. ${q.question}</p>
+          ${q.options.map((option, i) => `
+            <label class="block">
+              <input type="radio" name="question${index}" value="${option}" class="mr-2">
+              ${option}
+            </label>
+          `).join('')}
+          <div id="feedback${index}" class="mt-2 text-sm"></div>
+        `;
+        quizContainer.appendChild(questionDiv);
+      });
+
+      const submitButton = document.createElement('button');
+      submitButton.className = 'mt-4 w-full bg-green-500 text-white p-2 rounded-md hover:bg-green-600';
+      submitButton.textContent = 'Submit Answers';
+      submitButton.onclick = () => checkAnswers(questions);
+      quizContainer.appendChild(submitButton);
     }
 
     function checkAnswers(questions) {
