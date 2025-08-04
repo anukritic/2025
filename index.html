@@ -50,7 +50,8 @@
     <h1 class="text-2xl font-bold mb-4 text-center">Quiz App</h1>
     <div class="mb-4">
       <label for="topic" class="block text-sm font-medium text-gray-700">Enter Topic</label>
-      <input type="text" id="topic" class="mt-1 p-2 w-full border rounded-md" placeholder="e.g., History, Science">
+      <input type="text" id="topic" class="mt-1 p-2 w-full border rounded-md" placeholder="e.g., History, Science, Movies, Music">
+      <p class="text-xs text-gray-500 mt-1">Supported topics: General, Books, Movies, Music, Theatre, TV, Video Games, Board Games, Science, Computers, Math, Mythology, Sports, Geography, History, Politics, Art, Celebrities, Animals, Vehicles, Comics, Gadgets, Anime, Cartoons</p>
       <button onclick="generateQuiz()" class="mt-2 w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">Generate Quiz</button>
     </div>
     <div id="quizContainer" class="space-y-4"></div>
@@ -58,11 +59,70 @@
   </div>
 
   <script>
-    // Map user-friendly topics to OpenTDB category IDs
+    // Comprehensive topic to OpenTDB category ID mapping
     const topicMap = {
-      history: 23, // History
-      science: 17, // Science & Nature
-      // Add more mappings as needed, see https://opentdb.com/api_category.php
+      general: 9,
+      "general knowledge": 9,
+      trivia: 9,
+      books: 10,
+      literature: 10,
+      movies: 11,
+      film: 11,
+      cinema: 11,
+      music: 12,
+      songs: 12,
+      musicals: 13,
+      theatre: 13,
+      theater: 13,
+      television: 14,
+      tv: 14,
+      shows: 14,
+      "video games": 15,
+      gaming: 15,
+      games: 15,
+      "board games": 16,
+      "tabletop games": 16,
+      science: 17,
+      nature: 17,
+      "science and nature": 17,
+      computers: 18,
+      computing: 18,
+      tech: 18,
+      technology: 18,
+      mathematics: 19,
+      math: 19,
+      maths: 19,
+      mythology: 20,
+      myths: 20,
+      sports: 21,
+      athletics: 21,
+      geography: 22,
+      places: 22,
+      history: 23,
+      historical: 23,
+      politics: 24,
+      government: 24,
+      art: 25,
+      painting: 25,
+      sculpture: 25,
+      celebrities: 26,
+      celebs: 26,
+      "famous people": 26,
+      animals: 27,
+      wildlife: 27,
+      vehicles: 28,
+      cars: 28,
+      transport: 28,
+      comics: 29,
+      "comic books": 29,
+      gadgets: 30,
+      devices: 30,
+      "tech gadgets": 30,
+      anime: 31,
+      manga: 31,
+      "japanese anime": 31,
+      cartoons: 32,
+      animation: 32
     };
 
     // Function to decode HTML entities (e.g., &quot; to ")
@@ -80,7 +140,9 @@
       resultDiv.innerHTML = '';
 
       if (!topicMap[topic]) {
-        resultDiv.innerHTML = '<p class="text-red-500">Please enter a valid topic (e.g., History, Science).</p>';
+        resultDiv.innerHTML = `
+          <p class="text-red-500">Please enter a valid topic. Supported topics include: General, Books, Movies, Music, Theatre, TV, Video Games, Board Games, Science, Computers, Math, Mythology, Sports, Geography, History, Politics, Art, Celebrities, Animals, Vehicles, Comics, Gadgets, Anime, Cartoons.</p>
+        `;
         return;
       }
 
@@ -92,7 +154,7 @@
         const data = await response.json();
 
         if (data.response_code !== 0) {
-          resultDiv.innerHTML = '<p class="text-red-500">Error fetching questions. Please try again.</p>';
+          resultDiv.innerHTML = '<p class="text-red-500">Error fetching questions. Please try again or choose another topic.</p>';
           return;
         }
 
