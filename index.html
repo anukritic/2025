@@ -109,6 +109,7 @@
               ${option}
             </label>
           `).join('')}
+          <div id="feedback${index}" class="mt-2 text-sm"></div>
         `;
         quizContainer.appendChild(questionDiv);
       });
@@ -125,8 +126,16 @@
       const resultDiv = document.getElementById('result');
       questions.forEach((q, index) => {
         const selectedOption = document.querySelector(`input[name="question${index}"]:checked`);
-        if (selectedOption && selectedOption.value === q.answer) {
-          score++;
+        const feedbackDiv = document.getElementById(`feedback${index}`);
+        if (selectedOption) {
+          if (selectedOption.value === q.answer) {
+            score++;
+            feedbackDiv.innerHTML = '<p class="text-green-500">Correct!</p>';
+          } else {
+            feedbackDiv.innerHTML = `<p class="text-red-500">Incorrect! The correct answer is ${q.answer}.</p>`;
+          }
+        } else {
+          feedbackDiv.innerHTML = '<p class="text-red-500">No answer selected!</p>';
         }
       });
       resultDiv.innerHTML = `<p class="text-lg font-bold">Score: ${score}/${questions.length}</p>`;
